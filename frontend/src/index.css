@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 font-mono;
+  }
+  ::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-zinc-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-zinc-600 rounded-full;
+  }
+}
+
+/* Markdown report styles */
+.report-content h1 { @apply text-2xl font-bold text-white mb-4 mt-6 border-b border-zinc-700 pb-2; }
+.report-content h2 { @apply text-xl font-bold text-zinc-100 mb-3 mt-5; }
+.report-content h3 { @apply text-lg font-semibold text-zinc-200 mb-2 mt-4; }
+.report-content p  { @apply text-zinc-300 leading-relaxed mb-3; }
+.report-content ul { @apply list-disc list-inside text-zinc-300 mb-3 space-y-1; }
+.report-content ol { @apply list-decimal list-inside text-zinc-300 mb-3 space-y-1; }
+.report-content li { @apply leading-relaxed; }
+.report-content strong { @apply text-white font-semibold; }
+.report-content a  { @apply text-violet-400 hover:text-violet-300 underline break-all; }
+.report-content code { @apply bg-zinc-800 text-violet-300 px-1.5 py-0.5 rounded text-sm; }
+.report-content pre { @apply bg-zinc-800 rounded-lg p-4 overflow-x-auto mb-3; }
+.report-content blockquote { @apply border-l-4 border-violet-500 pl-4 text-zinc-400 italic; }
+.report-content hr { @apply border-zinc-700 my-4; }
