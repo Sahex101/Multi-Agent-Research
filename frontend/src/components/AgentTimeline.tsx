@@ -61,7 +61,6 @@ export default function AgentTimeline({ events, isLoading, error }: Props) {
             }
 
             if (event.type === 'agent_update') {
-              const isDone = event.status === 'done'
               const isWarning = event.status === 'warning'
               const isSystem = agentKey === 'system'
               return (

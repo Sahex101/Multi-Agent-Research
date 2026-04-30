@@ -3,7 +3,7 @@ export type AgentName = 'planner' | 'researcher' | 'analyst' | 'writer' | 'syste
 export interface AgentEvent {
   type: 'agent_start' | 'agent_update' | 'complete' | 'error'
   agent?: AgentName
-  status?: 'running' | 'done' | 'error'
+  status?: 'running' | 'done' | 'error' | 'warning'
   message: string
   data?: {
     sub_questions?: string[]
