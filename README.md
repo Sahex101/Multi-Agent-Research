@@ -1,8 +1,8 @@
 # Multi-Agent Research Assistant
 
-> AI-powered research using LangGraph multi-agent orchestration — **100% free** via OpenRouter + Vercel + Railway.
+> AI-powered research using LangGraph multi-agent orchestration — runs locally with Azure OpenAI or OpenRouter (free tier).
 
-**[Live Demo](https://your-vercel-url.vercel.app)** · **[Backend API](https://your-railway-url.railway.app/docs)**
+**Built by [Sahel Ahmadzai](https://ahmadzai.tech) · BSc AI @ JKU Linz · AI & Automation Engineer**
 
 ---
 
@@ -15,13 +15,13 @@ User Task
 ┌──────────┐     ┌────────────┐     ┌─────────┐     ┌────────┐
 │  Planner │────▶│ Researcher │────▶│ Analyst │────▶│ Writer │
 │          │     │            │     │         │     │        │
-│ Breaks   │     │ DuckDuckGo │     │Synthesis│     │ Final  │
-│ task into│     │ web search │     │& themes │     │ Report │
-│ sub-Qs   │     │ + summarize│     │         │     │   .md  │
+│ Breaks   │     │ Web search │     │Synthesis│     │ Final  │
+│ task into│     │ + summarize│     │& themes │     │ Report │
+│ sub-Qs   │     │            │     │         │     │   .md  │
 └──────────┘     └────────────┘     └─────────┘     └────────┘
 ```
 
-**Real-time streaming:** Each agent streams its progress via Server-Sent Events (SSE) to the frontend — you see every step as it happens.
+**Real-time streaming:** Each agent streams its progress via Server-Sent Events (SSE) — you see every step live.
 
 ---
 
@@ -30,83 +30,90 @@ User Task
 | Layer | Technology |
 |---|---|
 | **Orchestration** | [LangGraph](https://github.com/langchain-ai/langgraph) |
-| **LLMs** | OpenRouter free models (Llama 3.1, Gemma 3) |
-| **Web Search** | DuckDuckGo Search (no API key needed) |
+| **LLMs** | Azure OpenAI (primary) · OpenRouter free tier (fallback) |
+| **Web Search** | Tavily (recommended) · DuckDuckGo · Wikipedia (guaranteed fallback) |
 | **Backend** | FastAPI + async Python |
-| **Database** | SQLite (local) / upgradeable to Supabase |
+| **Database** | SQLite (async via SQLAlchemy) |
 | **Frontend** | React + Vite + TypeScript + Tailwind CSS |
 | **Streaming** | Server-Sent Events (SSE) |
-| **Backend Hosting** | Railway (free tier) |
-| **Frontend Hosting** | Vercel (free tier) |
-
----
-
-## Free Setup — $0 Cost
-
-1. **OpenRouter API key** → [openrouter.ai](https://openrouter.ai) — free tier includes Llama 3.1 8B and Gemma 3
-2. **Railway** → [railway.app](https://railway.app) — free $5/month credits (more than enough)
-3. **Vercel** → [vercel.com](https://vercel.com) — free hobby tier
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-- Python 3.12+
-- Node.js 20+
-- OpenRouter API key
+### Windows (one command)
+```powershell
+.\start.ps1
+```
 
-### Backend
+Opens both backend (port 8000) and frontend (port 5173) in one click.
 
+### Manual Setup
+
+**Backend:**
 ```bash
 cd backend
 cp .env.example .env
-# Add your OPENROUTER_API_KEY to .env
+# Fill in your API keys in .env
 
 python -m venv .venv
 .venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS/Linux
-
 pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn main:app --port 8000
 ```
 
-API docs: http://localhost:8000/docs
-
-### Frontend
-
+**Frontend:**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-App: http://localhost:5173
+App: http://localhost:5173 · API docs: http://localhost:8000/docs
 
-### Docker (full stack)
-
+### Docker
 ```bash
 cp backend/.env.example backend/.env
-# Add OPENROUTER_API_KEY to backend/.env
-
 docker compose up --build
 ```
+
+---
+
+## Configuration (`backend/.env`)
+
+```env
+# ── LLM: Azure OpenAI (GitHub Education / Azure for Students) ──────────
+AZURE_OPENAI_API_KEY=your-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_DEPLOYMENT_NAME=gpt-4o-mini   # name of your deployed model
+
+# ── LLM: OpenRouter fallback (free, auto-used if Azure not configured) ──
+OPENROUTER_API_KEY=your-key         # free at openrouter.ai
+
+# ── Web Search: Tavily (1000 free searches/month) ───────────────────────
+TAVILY_API_KEY=tvly-...             # free at app.tavily.com
+# If not set: falls back to DuckDuckGo → Wikipedia (always works)
+```
+
+**Provider priority:**
+- LLM: Azure → OpenRouter (auto-fallback if deployment not found)
+- Search: Tavily → DuckDuckGo → Wikipedia (always has results)
 
 ---
 
 ## Agents
 
 ### 🧠 Planner
-Breaks the research task into 2–4 focused sub-questions using `google/gemma-3-4b-it:free`.
+Breaks the research task into focused sub-questions.
 
 ### 🌐 Researcher
-For each sub-question: searches DuckDuckGo (no API key), extracts top results, and summarizes key findings using `meta-llama/llama-3.1-8b-instruct:free`.
+For each sub-question: searches the web (Tavily/DDG/Wikipedia), extracts results, summarizes key findings with source citations.
 
 ### 📊 Analyst
-Synthesizes all research summaries, identifies themes, contradictions, and gaps using `meta-llama/llama-3.1-8b-instruct:free`.
+Synthesizes all research summaries, identifies themes, contradictions, and knowledge gaps.
 
 ### ✍️ Writer
-Produces a professional, structured Markdown report with Executive Summary, Key Findings, Detailed Analysis, Conclusions, and Sources using `google/gemma-3-12b-it:free`.
+Produces a professional Markdown report with Executive Summary, Key Findings, Analysis, Conclusions, and Sources.
 
 ---
 
@@ -116,11 +123,10 @@ Produces a professional, structured Markdown report with Executive Summary, Key 
 |---|---|---|
 | `POST /api/research/stream` | POST | Start research + stream SSE events |
 | `GET /api/sessions` | GET | List recent sessions |
-| `GET /api/sessions/{id}` | GET | Get session + report |
+| `GET /api/sessions/{id}` | GET | Get session + full report |
 | `GET /health` | GET | Health check |
-| `GET /docs` | GET | Interactive API docs |
 
-### Request
+### Example Request
 ```json
 POST /api/research/stream
 {
@@ -131,29 +137,26 @@ POST /api/research/stream
 
 ---
 
-## Deploy
+## Deploy to Cloud
 
 ### GitHub Actions (automatic)
 Push to `main` → auto-deploys backend to Railway + frontend to Vercel.
 
-**Required secrets** (Settings → Secrets):
+**Required GitHub Secrets:**
 ```
-RAILWAY_TOKEN          # From railway.app dashboard
-RAILWAY_BACKEND_URL    # Your Railway deployment URL
-VERCEL_TOKEN           # From vercel.com dashboard
-VERCEL_ORG_ID          # From Vercel project settings
-VERCEL_PROJECT_ID      # From Vercel project settings
+RAILWAY_TOKEN
+RAILWAY_BACKEND_URL
+VERCEL_TOKEN
+VERCEL_ORG_ID
+VERCEL_PROJECT_ID
 ```
 
 ---
 
 ## Extending
 
-- **Add agents:** Create a new file in `backend/agents/`, add a node to `backend/graph/research_graph.py`
-- **Swap models:** Change `WRITER_MODEL` etc. in `.env` — any OpenRouter model works
-- **Add Supabase:** Replace `sqlite+aiosqlite` with `postgresql+asyncpg` in `db/database.py`
-- **Add auth:** Add Supabase Auth or a simple JWT middleware to FastAPI
+- **Add agents:** Create a file in `backend/agents/`, add a node in `backend/graph/research_graph.py`
+- **Swap LLMs:** Change `AZURE_DEPLOYMENT_NAME` or `openrouter_model` in `config.py`
+- **Add auth:** Add JWT middleware to FastAPI
+- **Production DB:** Replace `sqlite+aiosqlite` with `postgresql+asyncpg`
 
----
-
-*Built by [Sahel Ahmadzai](https://ahmadzai.tech) · BSc AI @ JKU Linz*
