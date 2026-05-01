@@ -34,8 +34,11 @@ export function useResearch(): UseResearchReturn {
     const controller = new AbortController()
     abortRef.current = controller
 
+    // In production VITE_API_URL points to Heroku backend; in dev proxy handles /api
+    const apiBase = (typeof __API_URL__ !== 'undefined' && __API_URL__) ? __API_URL__ : ''
+
     try {
-      const response = await fetch('/api/research/stream', {
+      const response = await fetch(`${apiBase}/api/research/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task, max_search_queries: maxQueries }),

@@ -11,4 +11,8 @@ export default defineConfig({
       },
     },
   },
+  define: {
+    // Injected at build time — set VITE_API_URL in Vercel env vars
+    __API_URL__: JSON.stringify(process.env.VITE_API_URL ?? ''),
+  },
 })
