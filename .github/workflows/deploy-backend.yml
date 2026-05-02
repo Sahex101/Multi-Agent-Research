@@ -13,15 +13,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Configure git
+      - name: Trigger Heroku build via API
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
         run: |
-          git config user.email "github-actions@github.com"
-          git config user.name "GitHub Actions"
+          # Use Heroku Source Blob API — avoids git push restrictions on GitHub-connected apps.
+          # Heroku fetches the full GitHub archive; APP_BASE=backend (set in Config Vars)
+          # tells the monorepo buildpack which subdirectory to build.
+          BUILD_RESPONSE=$(curl -s -X POST \
+            -H "Accept: application/vnd.heroku+json; version=3" \
+            -H "Authorization: Bearer $HEROKU_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"source_blob\": {\"url\": \"https://github.com/Sahex101/Multi-Agent-Research/archive/${{ github.sha }}.tar.gz\", \"version\": \"${{ github.sha }}\"}}" \
+            https://api.heroku.com/apps/multi-agent-research-api/builds)
 
-      - name: Push backend subtree to Heroku
-        run: |
-          git remote add heroku https://heroku:${{ secrets.HEROKU_API_KEY }}@git.heroku.com/multi-agent-research-api.git
-          git push heroku $(git subtree split --prefix backend HEAD):refs/heads/main --force
+          echo "Build response: $BUILD_RESPONSE"
+          BUILD_ID=$(echo $BUILD_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+          echo "Build ID: $BUILD_ID"
+
+          # Poll until build finishes
+          for i in $(seq 1 30); do
+            sleep 10
+            STATUS=$(curl -s \
+              -H "Accept: application/vnd.heroku+json; version=3" \
+              -H "Authorization: Bearer $HEROKU_API_KEY" \
+              "https://api.heroku.com/apps/multi-agent-research-api/builds/$BUILD_ID" \
+              | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+            echo "[$i] Build status: $STATUS"
+            if [ "$STATUS" = "succeeded" ]; then
+              echo "✅ Deploy succeeded"
+              exit 0
+            elif [ "$STATUS" = "failed" ]; then
+              echo "❌ Deploy failed"
+              exit 1
+            fi
+          done
+          echo "⏱️ Timed out waiting for build"
+          exit 1
