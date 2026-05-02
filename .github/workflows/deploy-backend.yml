@@ -24,4 +24,4 @@ jobs:
       - name: Push backend subtree to Heroku
         run: |
           git remote add heroku https://heroku:${{ secrets.HEROKU_API_KEY }}@git.heroku.com/multi-agent-research-api.git
-          git subtree push --prefix backend heroku main
+          git push heroku $(git subtree split --prefix backend HEAD):refs/heads/main --force
