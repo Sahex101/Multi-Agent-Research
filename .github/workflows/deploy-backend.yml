@@ -16,11 +16,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Deploy to Heroku
-        uses: AkhileshNS/heroku-deploy@v3.13.15
-        with:
-          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-          heroku_app_name: multi-agent-research-api-c54e9ed80eb6
-          heroku_email: ${{ secrets.HEROKU_EMAIL }}
-          appdir: backend
-          buildpack: https://github.com/lstoll/heroku-buildpack-monorepo
+      - name: Configure git
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+
+      - name: Push backend subtree to Heroku
+        run: |
+          git remote add heroku https://heroku:${{ secrets.HEROKU_API_KEY }}@git.heroku.com/multi-agent-research-api-c54e9ed80eb6.git
+          git subtree push --prefix backend heroku main

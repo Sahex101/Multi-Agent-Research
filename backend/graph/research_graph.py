@@ -1,5 +1,5 @@
 from langgraph.graph import StateGraph, END, START
-from typing import TypedDict, Any
+from typing import TypedDict
 from agents.planner import planner_node
 from agents.researcher import researcher_node
 from agents.analyst import analyst_node
