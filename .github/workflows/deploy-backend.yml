@@ -1,0 +1,26 @@
+name: Deploy Backend to Heroku
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
+
+jobs:
+  deploy:
+    name: Deploy to Heroku
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deploy to Heroku
+        uses: AkhileshNS/heroku-deploy@v3.13.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: multi-agent-research-api-c54e9ed80eb6
+          heroku_email: ${{ secrets.HEROKU_EMAIL }}
+          appdir: backend
+          buildpack: https://github.com/lstoll/heroku-buildpack-monorepo
