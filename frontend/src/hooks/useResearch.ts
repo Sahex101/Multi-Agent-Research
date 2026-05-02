@@ -45,7 +45,13 @@ export function useResearch(): UseResearchReturn {
         signal: controller.signal,
       })
 
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      if (!response.ok) {
+        if (response.status === 429) {
+          const err = await response.json().catch(() => ({}))
+          throw new Error(err.detail ?? 'Rate limit reached. Please try again later.')
+        }
+        throw new Error(`HTTP ${response.status}`)
+      }
       if (!response.body) throw new Error('No response body')
 
       const reader = response.body.getReader()

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["*"]
 
+    # ── Rate limiting ─────────────────────────────────────────────────────
+    max_sessions_per_day: int = 10
+    max_sessions_per_month: int = 250
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

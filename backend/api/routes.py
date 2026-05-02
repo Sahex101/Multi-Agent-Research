@@ -1,17 +1,44 @@
 import uuid
 import json
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from datetime import datetime, timezone
 
 from models.schemas import ResearchRequest
 from graph.research_graph import research_graph
 from db.database import get_db, ResearchSessionModel
-from config import mark_azure_failed
+from config import mark_azure_failed, settings
 
 router = APIRouter(prefix="/api", tags=["research"])
+
+
+async def _check_rate_limit(db: AsyncSession):
+    """Raises 429 if daily or monthly session limits are exceeded."""
+    now = datetime.now(timezone.utc)
+
+    # Count today's sessions
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    daily_count = await db.scalar(
+        select(func.count()).where(ResearchSessionModel.created_at >= day_start)
+    )
+    if daily_count >= settings.max_sessions_per_day:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily limit reached ({settings.max_sessions_per_day} sessions/day). Please try again tomorrow.",
+        )
+
+    # Count this month's sessions
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    monthly_count = await db.scalar(
+        select(func.count()).where(ResearchSessionModel.created_at >= month_start)
+    )
+    if monthly_count >= settings.max_sessions_per_month:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Monthly limit reached ({settings.max_sessions_per_month} sessions/month). Please try again next month.",
+        )
 
 # Maps node names to the next agent's start message
 _NEXT_AGENT_START = {
@@ -114,6 +141,8 @@ async def run_research_stream(task: str, max_search_queries: int, session_id: st
 @router.post("/research/stream")
 async def research_stream(request: ResearchRequest, db: AsyncSession = Depends(get_db)):
     """Start a research session and stream agent events via SSE."""
+    await _check_rate_limit(db)
+
     session_id = str(uuid.uuid4())
 
     session = ResearchSessionModel(
@@ -135,6 +164,22 @@ async def research_stream(request: ResearchRequest, db: AsyncSession = Depends(g
             "Connection": "keep-alive",
         },
     )
+
+
+@router.get("/usage")
+async def get_usage(db: AsyncSession = Depends(get_db)):
+    """Returns current daily and monthly session usage vs. limits."""
+    now = datetime.now(timezone.utc)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    daily = await db.scalar(select(func.count()).where(ResearchSessionModel.created_at >= day_start))
+    monthly = await db.scalar(select(func.count()).where(ResearchSessionModel.created_at >= month_start))
+
+    return {
+        "daily":   {"used": daily,   "limit": settings.max_sessions_per_day},
+        "monthly": {"used": monthly, "limit": settings.max_sessions_per_month},
+    }
 
 
 @router.get("/sessions")
