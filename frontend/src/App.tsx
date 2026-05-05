@@ -6,14 +6,18 @@ import { useResearch } from './hooks/useResearch'
 import type { ResearchSession } from './types'
 import { History, X } from 'lucide-react'
 
+const apiBase = (typeof __API_URL__ !== 'undefined' && __API_URL__) ? __API_URL__ : ''
+
 export default function App() {
   const { events, report, isLoading, error, sessionId, startResearch, reset } = useResearch()
   const [sessions, setSessions] = useState<ResearchSession[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [historyReport, setHistoryReport] = useState<string | null>(null)
+  const [historySessionId, setHistorySessionId] = useState<string | null>(null)
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch('/api/sessions')
+      const res = await fetch(`${apiBase}/api/sessions`)
       if (res.ok) setSessions(await res.json())
     } catch {
       // backend may not be running
@@ -26,13 +30,26 @@ export default function App() {
 
   const loadSession = async (id: string) => {
     try {
-      const res = await fetch(`/api/sessions/${id}`)
+      const res = await fetch(`${apiBase}/api/sessions/${id}`)
       if (res.ok) {
+        const data = await res.json()
+        if (data.final_report) {
+          setHistoryReport(data.final_report)
+          setHistorySessionId(data.id)
+        }
         setShowHistory(false)
-        alert(`Re-run the same task to get fresh results, or copy the report from the history panel (session: ${id.slice(0, 8)}).`)
       }
     } catch {}
   }
+
+  const handleReset = () => {
+    reset()
+    setHistoryReport(null)
+    setHistorySessionId(null)
+  }
+
+  const displayReport = report ?? historyReport
+  const displaySessionId = sessionId ?? historySessionId
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -96,7 +113,7 @@ export default function App() {
         <ResearchForm
           onSubmit={startResearch}
           isLoading={isLoading}
-          onReset={reset}
+          onReset={handleReset}
         />
 
         <AgentTimeline
@@ -105,8 +122,8 @@ export default function App() {
           error={error}
         />
 
-        {report && (
-          <ReportViewer report={report} sessionId={sessionId} />
+        {displayReport && (
+          <ReportViewer report={displayReport} sessionId={displaySessionId} />
         )}
       </main>
     </div>
