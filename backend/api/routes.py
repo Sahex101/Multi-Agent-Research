@@ -1,5 +1,6 @@
 import uuid
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,8 @@ from models.schemas import ResearchRequest
 from graph.research_graph import research_graph
 from db.database import get_db, ResearchSessionModel
 from config import mark_azure_failed, settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["research"])
 
@@ -131,12 +134,13 @@ async def run_research_stream(task: str, max_search_queries: int, session_id: st
                     await db.commit()
                 yield _sse("complete", {"report": report, "session_id": session_id})
             return
-        yield _sse("error", {"message": err_msg})
+        # Log full error internally, send only a generic message to the client
+        logger.error("Research stream error (session=%s): %s", session_id, err_msg)
+        yield _sse("error", {"message": "An error occurred while processing your request. Please try again."})
         session_obj = await db.get(ResearchSessionModel, session_id)
         if session_obj:
             session_obj.status = "error"
             await db.commit()
-
 
 @router.post("/research/stream")
 async def research_stream(request: ResearchRequest, db: AsyncSession = Depends(get_db)):

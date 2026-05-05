@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # ── Search (Tavily primary, DuckDuckGo fallback) ─────────────────────
     tavily_api_key: str = ""
 
-    cors_origins: list[str] = ["*"]
+    cors_origins: list[str] = ["https://multi-agent-research-five.vercel.app"]
 
     # ── Rate limiting ─────────────────────────────────────────────────────
     max_sessions_per_day: int = 10
